@@ -35,7 +35,47 @@ fn part1(data: &str) -> String {
 }
 
 fn part2(data: &str) -> String {
-    0.to_string()
+    let lines = data.lines().filter(|s| !s.is_empty());
+
+    let mut scores = Vec::<usize>::new();
+
+    for line in lines {
+        let (_card, rest) = line.split_once(':').unwrap();
+        let (lhs, rhs) = rest.split_once('|').unwrap();
+
+        let left = lhs
+            .split_whitespace()
+            .map(|n| n.parse::<u8>().unwrap())
+            .collect::<Vec<u8>>();
+        let right = rhs
+            .split_whitespace()
+            .filter_map(|n| {
+                let rhs = n.parse::<u8>().unwrap();
+                if left.iter().any(|n| *n == rhs) {
+                    Some(rhs)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<u8>>();
+
+        scores.push(right.len());
+    }
+
+    let mut instances = vec![1_usize; scores.len()];
+
+    scores.iter().enumerate().for_each(|(idx, n)| {
+        let x = instances[idx];
+        for idx in idx + 1..idx + n + 1 {
+            if let Some(times) = instances.get_mut(idx) {
+                *times += x;
+            } else {
+                break;
+            }
+        }
+    });
+
+    instances.iter().sum::<usize>().to_string()
 }
 
 fn main() {
@@ -64,8 +104,8 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
     fn example_1() {
         assert_eq!(&part1(SAMPLE), "13");
     }
-    // #[test]
-    // fn example_2() {
-    //     assert_eq!(&part2(SAMPLE), "467835");
-    // }
+    #[test]
+    fn example_2() {
+        assert_eq!(&part2(SAMPLE), "30");
+    }
 }
