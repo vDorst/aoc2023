@@ -1,4 +1,4 @@
-use std::ops::Not;
+use std::{ops::Not, time::Instant};
 
 use aoc2023::{input_filename, read_input};
 use winnow::{
@@ -65,7 +65,7 @@ struct TileInfo {
     energized: bool,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct Game {
     grid: Vec<Vec<TileInfo>>,
     backtrack: Vec<(P, Dir)>,
@@ -144,13 +144,13 @@ impl Game {
             true
         };
 
-        println!("DE: {dead_end}, P {:?} D {:?}", self.pos, self.dir);
+        // println!("DE: {dead_end}, P {:?} D {:?}", self.pos, self.dir);
 
         if dead_end {
             if let Some((new_pos, new_dir)) = self.backtrack.pop() {
                 self.pos = new_pos;
                 self.dir = new_dir;
-                println!("BackTrack: P {:?} D {:?}", self.pos, self.dir);
+                // println!("BackTrack: P {:?} D {:?}", self.pos, self.dir);
             } else {
                 return false;
             }
@@ -261,43 +261,87 @@ impl P {
     }
 }
 
+fn simulate_game(game: &mut Game) -> usize {
+    let mut cnt = 0;
+    while game.next() {
+        cnt += 1;
+        if cnt > 120 * 120 {
+            println!("LIMIT!!!!");
+            break;
+        }
+    }
+    // game.show();
+
+    game.grid
+        .iter()
+        .map(|tile| tile.iter().filter(|tile| tile.energized).count())
+        .sum::<usize>()
+}
+
 fn part1(input: &str) -> String {
     let mut g = process(input).unwrap();
 
     g.pos = P { y: 0, x: 0 };
     g.dir = Dir::Right;
 
-    let mut cnt = 0;
-    while g.next() {
-        cnt += 1;
-        if cnt > 10000 {
-            println!("LIMIT!!!!");
-            break;
-        }
-    }
-    g.show();
-
-    g.grid
-        .iter()
-        .map(|tile| tile.iter().filter(|tile| tile.energized).count())
-        .sum::<usize>()
-        .to_string()
+    simulate_game(&mut g).to_string()
 }
 
 fn part2(input: &str) -> String {
-    let mut g = process(input).unwrap();
+    let g = process(input).unwrap();
 
-    0.to_string()
+    let mut store = Vec::new();
+
+    let y_len = g.grid.len();
+    let x_len = g.grid[0].len();
+
+    for y in 0..y_len {
+        let mut game = g.clone();
+        game.pos = P { y, x: 0 };
+        game.dir = Dir::Right;
+
+        store.push(simulate_game(&mut game));
+    }
+
+    for y in 0..y_len {
+        let mut game = g.clone();
+        game.pos = P { y, x: x_len - 1 };
+        game.dir = Dir::Left;
+
+        store.push(simulate_game(&mut game));
+    }
+
+    for x in 0..x_len {
+        let mut game = g.clone();
+        game.pos = P { y: y_len - 1, x };
+        game.dir = Dir::Left;
+
+        store.push(simulate_game(&mut game));
+    }
+
+    for x in 0..x_len {
+        let mut game = g.clone();
+        game.pos = P { y: 0, x };
+        game.dir = Dir::Down;
+
+        store.push(simulate_game(&mut game));
+    }
+
+    //println!("{store:?}");
+
+    store.iter().max().unwrap().to_string()
 }
 
 fn main() {
     let data = read_input(&format!("./input_{}.txt", input_filename(file!())));
 
+    let start = Instant::now();
     let numbers = part1(&data);
-    println!("Part1: {numbers}");
+    println!("Part1: {numbers}, {} uS", start.elapsed().as_micros());
 
+    let start = Instant::now();
     let numbers = part2(&data);
-    println!("Part2: {numbers}");
+    println!("Part2: {numbers}, {} uS", start.elapsed().as_micros());
 }
 #[cfg(test)]
 mod tests {
@@ -358,12 +402,8 @@ mod tests {
         assert_eq!(&part1(SAMPLE), "46");
     }
 
-    // #[test]
-    // fn example_1_s2() {
-    //     assert_eq!(&part1(SAMPLE_2), "8");
-    // }
-    // #[test]
-    // fn example_2() {
-    //     assert_eq!(&part2(SAMPLE_P2), "10");
-    // }
+    #[test]
+    fn example_2() {
+        assert_eq!(&part2(SAMPLE), "51");
+    }
 }
